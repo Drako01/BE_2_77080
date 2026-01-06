@@ -1,0 +1,29 @@
+{
+  "name": "backend_77080",
+  "version": "2.0.0",
+  "description": "Backend para la comision de Alumnos #77080 de CoderHouse",
+  "homepage": "https://github.com/Drako01/BE_2_77080#readme",
+  "bugs": {
+    "url": "https://github.com/Drako01/BE_2_77080/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Drako01/BE_2_77080.git"
+  },
+  "license": "MIT",
+  "author": "Alejandro Di Stefano",
+  "type": "module",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node app.js",
+    "dev": "nodemon app.js"
+  },
+  "dependencies": {
+    "express": "5.2.1",
+    "mongoose": "9.1.2"
+  },
+  "devDependencies": {
+    "nodemon": "3.1.11"
+  }
+}
