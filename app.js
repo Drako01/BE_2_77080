@@ -17,8 +17,8 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 8080;
-const ATLAS = process.env.ATLAS;
-const MONGO_URL = process.env.MONGO_URL;
+const ATLAS = String(process.env.ATLAS).toLowerCase() === 'true';
+const MONGO_URL = ATLAS ? process.env.MONGO_ATLAS_URL : process.env.MONGO_URL;
 const SECRET_SESSION = process.env.SECRET_SESSION;
 
 app.use(express.json());
