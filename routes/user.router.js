@@ -56,7 +56,9 @@ router.post('/logout', requireLogin, async (req, res) => {
     try {
         const { first_name, last_name } = req.session.user;
         const full_name = first_name + ' ' + last_name;
-        req.session.destroy(() => {
+        req.session.destroy((err) => {
+            if (err) return res.status(500).json({message: "Error al hacer Logout!", error: err});
+            res.clearCookie('connect.sid', { path: '/'});
             res.status(200).json({message: "Logout Exitoso.!!", byebye: full_name})
         })
     } catch (err) {
