@@ -3,6 +3,7 @@ import homeRouter from './routes/home.router.js';
 import studentRouter from './routes/student.router.js';
 import userRouter from './routes/user.router.js';
 import profileRouter from './routes/profile.router.js';
+import dotenv from 'dotenv';
 
 
 import logger from './middleware/logger.middleware.js';
@@ -12,11 +13,13 @@ import { connectMongoDB, connectMongoAtlasDB } from './config/db/connect.config.
 import session from 'express-session';
 import MongoStore from 'connect-mongo';
 
+dotenv.config();
 
 const app = express();
-const PORT = 8000;
-const ATLAS = false;
-const MONGO_URL = "mongodb://127.0.0.1:27017/backend77080";
+const PORT = process.env.PORT || 8080;
+const ATLAS = process.env.ATLAS;
+const MONGO_URL = process.env.MONGO_URL;
+const SECRET_SESSION = process.env.SECRET_SESSION;
 
 app.use(express.json());
 app.use(logger);
@@ -24,7 +27,7 @@ app.use(logger);
 // Generamos la Cookie
 app.use(
     session({
-        secret: 'clave_secreta',
+        secret: SECRET_SESSION,
         resave: false,
         saveUninitialized: false,
         store: MongoStore.create({

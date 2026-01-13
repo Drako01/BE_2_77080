@@ -25,7 +25,8 @@
     "connect-mongo": "6.0.0",
     "cookie-parser": "1.4.7",
     "express-session": "1.18.2",
-    "bcrypt": "6.0.0"
+    "bcrypt": "6.0.0",
+    "dotenv": "17.2.3"
   },
   "devDependencies": {
     "nodemon": "3.1.11"
