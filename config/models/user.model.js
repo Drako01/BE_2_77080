@@ -18,12 +18,20 @@ const userSchema = new mongoose.Schema({
     },
     password: {
         type: String,
-        required: true
     },
     age: {
         type: Number,
         required: true
+    },
+    role: {
+        type: String,
+        required: true,
+        enum: ["user", "seller", "admin"],
+        default: "user"
+    },
+    githubid: {
+        type: String,
     }
-});
+}, { timestamps: true });
 
 export const User = mongoose.model('User', userSchema);
