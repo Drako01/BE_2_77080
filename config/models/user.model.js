@@ -18,6 +18,7 @@ const userSchema = new mongoose.Schema({
     },
     password: {
         type: String,
+        required: false // Pasar a true si no uso la Stetegy de GitHub
     },
     age: {
         type: Number,

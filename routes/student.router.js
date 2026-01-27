@@ -36,7 +36,6 @@ router.post('/', async (req, res) => {
     }
 });
 
-
 router.get('/:id', async (req, res) => {
     try {
         if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
