@@ -1,0 +1,129 @@
+{
+  "info": {
+    "_postman_id": "6842913f-1d2f-4e82-a341-31ca8b763507",
+    "name": "Students",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "26925227",
+    "_collection_link": "https://go.postman.co/collection/26925227-6842913f-1d2f-4e82-a341-31ca8b763507?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Listar Alumnos",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/student",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "student"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Crear Alumno",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n\t\"name\": \"Hugo\",\r\n\t\"email\": \"hudgo3@mail.com\",\r\n\t\"age\": 25\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/student",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "student"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Listar Alumno por su ID",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/student/695d9a17e93c813391b579cb",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "student",
+            "695d9a17e93c813391b579cb"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Actualizar Alumno por su ID",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "PUT",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n\t\"name\": \"Hugo\",\r\n\t\"email\": \"hugsdfsdfo@mail.com\",\r\n\t\"age\": 25\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/student/695d9a41e93c813391b579d2",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "student",
+            "695d9a41e93c813391b579d2"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Eliminar Alumno por su ID",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/student/695d9a17e93c813391b579cb",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "student",
+            "695d9a17e93c813391b579cb"
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}

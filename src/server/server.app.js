@@ -5,9 +5,9 @@ import session from 'express-session';
 import MongoStore from 'connect-mongo';
 import cookieParser from 'cookie-parser';
 
-import environment, { validateEnv } from '../config/env.config.js';
+import environment, { validateEnv } from '../config/env/env.config.js';
 
-import { initRouters } from './../routes/router.js';
+import { initRouters } from './../router/router.js';
 import logger from './../middleware/logger.middleware.js';
 
 import { connectAuto } from './../config/db/connect.config.js';

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getPublicEnv } from "../config/env.config.js";
+import { getPublicEnv } from "../../config/env/env.config.js";
 
 const router = Router();
 

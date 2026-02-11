@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { User } from "../config/models/user.model.js";
+import { User } from "../../models/user.model.js";
 import bcrypt from 'bcrypt';
-import { requireLogin, alreadyLogin } from "../middleware/auth.middleware.js";
+import { requireLogin, alreadyLogin } from "../../middleware/auth.middleware.js";
 
 const router = new Router();
 

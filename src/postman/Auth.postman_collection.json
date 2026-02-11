@@ -1,0 +1,172 @@
+{
+  "info": {
+    "_postman_id": "063db8d7-f994-4efb-a7cb-0344bcc1722d",
+    "name": "Auth",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "26925227",
+    "_collection_link": "https://go.postman.co/collection/26925227-063db8d7-f994-4efb-a7cb-0344bcc1722d?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Register",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n\t\"first_name\": \"Johnny\",\r\n\t\"last_name\": \"Cage\",\r\n\t\"email\": \"johnny.cage@example.com\",\r\n\t\"password\": \"password123\",\r\n\t\"age\": 30\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/auth/register",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "auth",
+            "register"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get All Users",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer sdfsdfsdfsdfsdfsdf",
+            "type": "text",
+            "disabled": true
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/auth/",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "auth",
+            ""
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Login",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// Verifica que la respuesta sea exitosa\r",
+              "if (pm.response.code === 200) {\r",
+              "    // Obtiene el token de la respuesta JSON\r",
+              "    var jsonResponse = pm.response.json();\r",
+              "    var token = jsonResponse.token; // Asegúrate de que 'token' sea el nombre de la propiedad en la respuesta\r",
+              "\r",
+              "    // Guarda el token en una variable de entorno llamada 'authToken'\r",
+              "    pm.environment.set(\"token\", token);\r",
+              "    \r",
+              "    // Muestra un mensaje en los logs de Postman\r",
+              "    console.log(\"Token guardado en la variable de entorno: \" + token);\r",
+              "} else {\r",
+              "    console.log(\"Error en la autenticación. Código de respuesta: \" + pm.response.code);\r",
+              "}\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n\t\"email\": \"johnny.cage@example.com\",\r\n\t\"password\": \"password123\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/auth/login",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "auth",
+            "login"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Logout",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/auth/logout",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "auth",
+            "logout"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "My Profile",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/auth/me",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "auth",
+            "me"
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { Student } from '../config/models/student.model.js';
+import { Student } from '../../models/student.model.js';
 import mongoose from "mongoose";
 
 const router = Router();

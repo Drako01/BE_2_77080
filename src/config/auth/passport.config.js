@@ -4,7 +4,7 @@ import { Strategy as GitHubStrategy } from "passport-github2";
 import { Strategy as JwtStrategy } from "passport-jwt";
 import dotenv from 'dotenv';
 import bcrypt from "bcrypt";
-import { User } from "../models/user.model.js";
+import { User } from "../../models/user.model.js";
 
 dotenv.config();
 

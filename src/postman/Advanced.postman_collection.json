@@ -1,0 +1,305 @@
+{
+  "info": {
+    "_postman_id": "78a673aa-3434-4751-8b52-aabd9ec883d9",
+    "name": "Advanced",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "26925227",
+    "_collection_link": "https://go.postman.co/collection/26925227-78a673aa-3434-4751-8b52-aabd9ec883d9?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "versionados",
+      "item": [
+        {
+          "name": "Get All students",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/student/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "student",
+                ""
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Hola",
+          "request": {
+            "method": "GET",
+            "header": []
+          },
+          "response": []
+        },
+        {
+          "name": "Get Student by ID",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/student/695d9a41e93c813391b579d2",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "student",
+                "695d9a41e93c813391b579d2"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get my Profile",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/api/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "api",
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Controllers",
+      "item": [
+        {
+          "name": "Get All Students",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/new-student",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "new-student"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Student by ID",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/new-student/695d9a41e93c813391b579d2",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "new-student",
+                "695d9a41e93c813391b579d2"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Student",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n\t\"name\": \"Hugo\",\r\n\t\"email\": \"hudgod3@mail.com\",\r\n\t\"age\": 25\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/new-student",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "new-student"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Student",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n\t\"name\": \"Hugo Gomez\",\r\n\t\"email\": \"hudgod3@mail.com\",\r\n\t\"age\": 25\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/new-student/698bc5476f1ccdce59867504",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "new-student",
+                "698bc5476f1ccdce59867504"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Student",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/new-student/698bc5476f1ccdce59867504",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "new-student",
+                "698bc5476f1ccdce59867504"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Get Student by ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/advanced/students/695d9a41e93c813391b579d2",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "advanced",
+            "students",
+            "695d9a41e93c813391b579d2"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Ping",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/advanced/v1/ping",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "advanced",
+            "v1",
+            "ping"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Courses by Student ID",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/advanced/students/695d9a41e93c813391b579d2/courses",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "advanced",
+            "students",
+            "695d9a41e93c813391b579d2",
+            "courses"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Boom",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/advanced/boom",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "advanced",
+            "boom"
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}
