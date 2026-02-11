@@ -373,4 +373,4 @@ Si quieres usar `/api/auth/github`, debes habilitar esa strategy y completar var
 
 ## Licencia
 
-MIT
+[MIT](./LICENCE)
