@@ -1,51 +1,100 @@
 # Backend 77080
 
-Backend API con Express + MongoDB, con varios enfoques de autenticacion:
+Backend API con `Express + MongoDB (Mongoose)` para prácticas de Backend, con varios enfoques de autenticación y una parte MVC con vistas `Handlebars` para órdenes.
 
-- Session tradicional (`/auth/*`)
-- Passport Local + Session (`/api/auth/*`)
-- JWT Bearer (`/api/auth/jwt/*`)
-- JWT en cookie HttpOnly (`/api/auth-jwt/*`), usado tambien por rutas protegidas de alumnos nuevas (`/new-student/*`)
+## Qué incluye hoy
 
-Este README documenta la estructura actual del proyecto, instalacion, configuracion con `.env`, y uso endpoint por endpoint.
-
-## Tabla de contenidos
-
-- [Stack y arquitectura](#stack-y-arquitectura)
-- [Estructura actual del proyecto](#estructura-actual-del-proyecto)
-- [Requisitos](#requisitos)
-- [Clonar e instalar](#clonar-e-instalar)
-- [Variables de entorno](#variables-de-entorno)
-- [Ejecutar el proyecto](#ejecutar-el-proyecto)
-- [Flujos de autenticacion](#flujos-de-autenticacion)
-- [Modelos de datos](#modelos-de-datos)
-- [API reference](#api-reference)
-- [Colecciones de Postman](#colecciones-de-postman)
-- [Troubleshooting](#troubleshooting)
+- CRUD de estudiantes (`/student`) sin auth (ruta clásica directa).
+- CRUD de estudiantes protegido (`/new-student`) con `Controller + Service + DTO`.
+- Auth por sesión tradicional (`/auth/*`).
+- Auth con `Passport Local + Session` (`/api/auth/*`).
+- Auth JWT Bearer (`/api/auth/jwt/*`).
+- Auth JWT en cookie HttpOnly con `passport-jwt` (`/api/auth-jwt/*`).
+- Módulo de órdenes con API REST + vista HTML (`/api/orders`, `/orders`).
+- Rutas avanzadas con `CustomRouter`, `group`, `param preload` y manejo async.
+- Diagnóstico de proceso (`/process`).
 
 ## Stack y arquitectura
 
+### Stack
+
 - Node.js + Express 5
-- MongoDB + Mongoose
-- Sessions con `express-session` y `connect-mongo`
-- Password hashing con `bcrypt`
-- JWT con `jsonwebtoken`
-- Passport (`passport-local`, `passport-jwt`, `passport-github2`)
+- MongoDB + Mongoose 9
+- `express-session` + `connect-mongo` (sesiones persistidas en Mongo)
+- `passport` (`local`, `jwt`, `github2`)
+- `jsonwebtoken`
+- `bcrypt`
+- `express-handlebars`
 
-Patron principal usado en parte del proyecto:
+### Arquitectura actual (conviven dos estilos)
 
-- Router -> Controller -> Service -> Model
+1. Estilo clásico (directo)
+- `Router -> Model (Mongoose)`
+- Usado en rutas como `/student` y parte de auth.
 
-Tambien conviven rutas "directas" (router + model) para fines de practica/comparacion.
+2. Estilo por capas (modular)
+- `Router -> Controller -> Service -> DAO -> Model`
+- Usado en `orders` y `new-student` (este último sin DAO, pero sí controller/service/DTO).
+
+3. Infraestructura transversal
+- `middleware/logger` para trazas de inicio/fin por request.
+- `middleware/auth` para sesión, JWT Bearer y JWT-cookie.
+- `middleware/polices` para autorización por roles usando `req.user`.
+- `passport.config` para strategies `local` y `jwt-cookie`.
+- `server.app` para bootstrap (env, DB, session store, passport, handlebars, routers).
+
+## Flujo (Mermaid)
+
+Nota: este flujo está implementado para rutas como `/api/auth-jwt/me` y `/new-student/*`.
+No aplica al módulo `orders` mientras `router.use(requireJwtCookie)` siga comentado en `src/router/routes/order.router.js`.
+
+```mermaid
+flowchart TD
+    A["Cliente o Postman"] --> B["POST /api/auth-jwt/login"]
+    B --> C["jwt.router.js"]
+    C --> D["User Model + bcrypt"]
+    D --> C
+    C --> E["Genera JWT"]
+    E --> F["Set-Cookie access_token (HttpOnly)"]
+    F --> G["Cliente guarda cookie"]
+
+    G --> H["Request a ruta protegida"]
+    H --> I["requireJwtCookie"]
+    I --> J["Passport JWT cookie strategy"]
+    J --> K["req.user"]
+    K --> L["Validacion de roles"]
+    L --> M["Controller o Handler"]
+    M --> N["Service o DAO"]
+    N --> O["Mongoose Model"]
+    O --> P["MongoDB"]
+    P --> A2["Response JSON o HTML"]
+```
+
+Si no se visualiza el diagrama, tu visor Markdown probablemente no soporta Mermaid. En GitHub web suele verse correctamente.
+
+Flujo equivalente en texto:
+
+```text
+Cliente -> POST /api/auth-jwt/login
+       -> jwt.router -> User + bcrypt -> JWT
+       -> Set-Cookie(access_token)
+       -> Request a ruta protegida
+       -> requireJwtCookie (passport-jwt)
+       -> req.user
+       -> validación de roles
+       -> controller/handler -> service/dao -> model -> MongoDB
+       -> response
+```
 
 ## Estructura actual del proyecto
+
+Arbol resumido (omitidos `node_modules` para legibilidad):
 
 ```text
 BE_2_77080/
 |-- app.js
 |-- package.json
 |-- package-lock.json
-|-- .gitignore
 |-- .env.example
 |-- README.md
 `-- src/
@@ -57,18 +106,27 @@ BE_2_77080/
     |   `-- env/
     |       `-- env.config.js
     |-- controllers/
+    |   |-- order.controller.js
     |   `-- student.controller.js
+    |-- dao/
+    |   |-- base.dao.js
+    |   `-- order.mongo.dao.js
     |-- middleware/
     |   |-- auth.middleware.js
     |   |-- logger.middleware.js
     |   `-- polices.middleware.js
     |-- models/
+    |   |-- order.model.js
     |   |-- student.model.js
     |   |-- user.model.js
     |   `-- dto/
     |       `-- student.dto.js
     |-- postman/
+    |   |-- Advanced.postman_collection.json
     |   |-- Auth.postman_collection.json
+    |   |-- JWT Auth.postman_collection.json
+    |   |-- Process.postman_collection.json
+    |   |-- Session Auth.postman_collection.json
     |   `-- Students.postman_collection.json
     |-- router/
     |   |-- router.js
@@ -81,217 +139,224 @@ BE_2_77080/
     |       |-- home.router.js
     |       |-- jwt.router.js
     |       |-- new.student.router.js
+    |       |-- order.router.js
     |       |-- process.router.js
     |       |-- profile.router.js
     |       |-- student.router.js
     |       `-- user.router.js
     |-- server/
+    |   |-- hbs.helper.js
     |   `-- server.app.js
-    `-- services/
-        `-- student.service.js
+    |-- services/
+    |   |-- order.service.js
+    |   `-- student.service.js
+    `-- views/
+        |-- layouts/
+        |   `-- main.handlebars
+        `-- orders/
+            `-- index.handlebars
 ```
 
-## Requisitos
+## Bootstrap y arranque
 
-- Node.js (recomendado LTS actual)
-- npm
-- MongoDB local o MongoDB Atlas
+`app.js` inicia `startServer()` y el bootstrap hace:
 
-## Clonar e instalar
-
-```bash
-git clone https://github.com/Drako01/BE_2_77080.git
-cd BE_2_77080
-npm install
-```
+1. Carga/valida variables de entorno (`validateEnv`).
+2. Conecta a Mongo (`LOCAL` o `ATLAS` según `MONGO_TARGET`).
+3. Configura `express-session` con `MongoStore`.
+4. Inicializa `passport` (`local`, `jwt-cookie`, serialize/deserialize).
+5. Configura `cookie-parser` + `express.json()`.
+6. Registra `logger` global.
+7. Configura motor `Handlebars`.
+8. Monta routers.
+9. Inicia `listen(PORT)`.
 
 ## Variables de entorno
 
-1. Crear `.env` desde `.env.example`:
+Crear `.env` desde `.env.example`.
 
-Linux/macOS:
-
-```bash
-cp .env.example .env
-```
-
-Windows PowerShell:
+PowerShell:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-1. Completar valores reales en `.env`.
+Variables soportadas:
 
-### Variables soportadas
-
-| Variable | Requerida | Descripcion |
+| Variable | Requerida | Descripción |
 |---|---|---|
-| `NODE_ENV` | No | Entorno (`development`, `production`, etc). Default: `development`. |
-| `PORT` | No | Puerto del server. Default: `5000`. |
-| `MONGO_TARGET` | No | `LOCAL` o `ATLAS`. Default: `LOCAL`. |
-| `MONGO_URL` | Si, cuando `MONGO_TARGET=LOCAL` | URI de Mongo local. |
-| `MONGO_ATLAS_URL` | Si, cuando `MONGO_TARGET=ATLAS` | URI de Mongo Atlas. |
-| `SECRET_SESSION` | Si | Secreto para `express-session` y firmado de cookies. |
-| `JWT_SECRET` | Si | Secreto para firmar/verificar JWT. |
-| `GITHUB_CLIENT_ID` | Opcional | Requerido si habilitas OAuth GitHub. |
-| `GITHUB_CLIENT_SECRET` | Opcional | Requerido si habilitas OAuth GitHub. |
+| `NODE_ENV` | No | Entorno (`development`, `production`, etc.). |
+| `PORT` | No | Puerto del server. En código default `5000`; `.env.example` trae `8000`. |
+| `MONGO_TARGET` | No | `LOCAL` o `ATLAS`. |
+| `MONGO_URL` | Sí si `MONGO_TARGET=LOCAL` | URI Mongo local. |
+| `MONGO_ATLAS_URL` | Sí si `MONGO_TARGET=ATLAS` | URI Mongo Atlas. |
+| `SECRET_SESSION` | Sí | Secreto de sesión y firmado de cookies. |
+| `JWT_SECRET` | Sí | Secreto para firmar/verificar JWT. |
+| `GITHUB_CLIENT_ID` | Opcional | Solo si habilitas OAuth GitHub. |
+| `GITHUB_CLIENT_SECRET` | Opcional | Solo si habilitas OAuth GitHub. |
 | `GITHUB_CALLBACK_URL` | Opcional | Callback OAuth GitHub. |
 
-Nota: el proyecto valida en arranque `SECRET_SESSION`, `JWT_SECRET` y la URI Mongo segun `MONGO_TARGET`.
-
-## Ejecutar el proyecto
-
-Desarrollo (con nodemon):
+## Instalación y ejecución
 
 ```bash
+npm install
 npm run dev
 ```
 
-Produccion/local simple:
+Scripts:
 
-```bash
-npm start
-```
+- `npm run dev`: inicia con `nodemon`
+- `npm start`: inicia con `node app.js`
+- `npm test`: placeholder
 
-Servidor esperado:
+## Funcionalidades por módulo
 
-```text
-http://localhost:<PORT>
-```
+### 1) Home
 
-Endpoint base de prueba:
+- `GET /` devuelve mensaje simple de bienvenida JSON.
 
-```http
-GET /
-```
+### 2) Students clásico (`/student`)
 
-## Flujos de autenticacion
+CRUD directo contra `Student` (sin capa service/controller):
 
-### 1) Session tradicional (`/auth/*`)
+- `GET /student`
+- `POST /student`
+- `GET /student/:id`
+- `PUT /student/:id`
+- `DELETE /student/:id`
 
-- Login guarda `req.session.user`
-- Rutas protegidas por `requireLogin`
+Incluye:
 
-### 2) Passport Local + Session (`/api/auth/*`)
+- validación de ObjectId en `:id`
+- control básico de duplicado por `email`
 
-- Login usa strategy `local` de passport
-- Tambien utiliza session server-side
+### 3) Session auth básico (`/auth`)
 
-### 3) JWT Bearer (`/api/auth/jwt/*`)
-
-- `/api/auth/jwt/login` devuelve token en JSON
-- `/api/auth/jwt/me` espera header:
-
-```http
-Authorization: Bearer <token>
-```
-
-### 4) JWT Cookie (`/api/auth-jwt/*`)
-
-- Login setea cookie `access_token` (HttpOnly)
-- `requireJwtCookie` autentica usando passport-jwt desde la cookie
-- Este flujo habilita acceso a `/new-student/*` y varias rutas de `/advanced/*`
-
-## Modelos de datos
-
-### Student
-
-Campos:
-
-- `name`: String
-- `email`: String (unico)
-- `age`: Number
-
-### User
-
-Campos:
-
-- `first_name`: String
-- `last_name`: String
-- `email`: String (unico, lowercase, trim)
-- `password`: String (hash bcrypt, puede ser null para OAuth)
-- `age`: Number
-- `role`: `user | seller | admin` (default `user`)
-- `githubid`: String
-
-## API reference
-
-### Health/Home
-
-- `GET /` -> mensaje de bienvenida
-
-### Students clasico (`/student`) - sin auth
-
-- `GET /student` -> lista estudiantes
-- `POST /student` -> crea estudiante
-- `GET /student/:id` -> estudiante por id
-- `PUT /student/:id` -> actualiza estudiante
-- `DELETE /student/:id` -> elimina estudiante
-
-Body ejemplo create/update:
-
-```json
-{
-  "name": "Hugo",
-  "email": "hugo@mail.com",
-  "age": 25
-}
-```
-
-### Auth con session basica (`/auth`)
+Rutas sobre `user.router.js` usando `req.session.user`:
 
 - `POST /auth/register`
 - `POST /auth/login`
-- `POST /auth/logout` (requiere session)
-- `GET /auth` (requiere session)
-- `GET /auth/me` (requiere session, via `profile.router`)
+- `POST /auth/logout`
+- `GET /auth` (lista usuarios, requiere sesión)
 
-Register body:
+Y perfil:
 
-```json
-{
-  "first_name": "Johnny",
-  "last_name": "Cage",
-  "email": "johnny@example.com",
-  "password": "password123",
-  "age": 30
-}
-```
+- `GET /auth/me` (montado desde `profile.router.js`)
 
-### Auth avanzada (`/api/auth`)
+### 4) Auth avanzada (`/api/auth`)
+
+Usa `Passport Local + Session`, más JWT Bearer en subrutas:
 
 - `POST /api/auth/register`
-- `POST /api/auth/login` (passport local + session)
+- `POST /api/auth/login` (passport local + `req.logIn`)
 - `POST /api/auth/logout`
 - `GET /api/auth/me`
-- `POST /api/auth/jwt/login` -> devuelve token JWT
-- `GET /api/auth/jwt/me` -> requiere `Authorization: Bearer <token>`
+- `POST /api/auth/jwt/login` (retorna token en JSON)
+- `GET /api/auth/jwt/me` (requiere `Authorization: Bearer <token>`)
 
-OAuth GitHub (ver nota en troubleshooting):
+También expone endpoints GitHub OAuth (strategy actualmente comentada en config):
 
 - `GET /api/auth/github`
 - `GET /api/auth/github/callback`
 - `GET /api/auth/github/fail`
 
-### Auth JWT en cookie (`/api/auth-jwt`)
+### 5) JWT en cookie HttpOnly (`/api/auth-jwt`)
+
+Flujo moderno usando `passport-jwt` leyendo cookie `access_token`:
 
 - `POST /api/auth-jwt/register`
-- `POST /api/auth-jwt/login` -> setea cookie `access_token`
-- `GET /api/auth-jwt/me` -> requiere cookie + role `user|admin`
-- `POST /api/auth-jwt/logout` -> limpia cookie
+- `POST /api/auth-jwt/login` (setea cookie `access_token`)
+- `GET /api/auth-jwt/me` (requiere cookie + role `user|admin`)
+- `POST /api/auth-jwt/logout` (limpia cookie)
 
-### Students con controller/service (`/new-student`) - protegido por JWT cookie
+### 6) Students con Controller/Service (`/new-student`)
 
-Regla global: requiere cookie `access_token` valida.
+Protegido globalmente por `requireJwtCookie`:
 
-- `GET /new-student` -> autenticado
-- `GET /new-student/:id` -> roles `admin|user`
-- `POST /new-student` -> solo `admin`
-- `PUT /new-student/:id` -> solo `admin`
-- `DELETE /new-student/:id` -> solo `admin`
+- `GET /new-student/` (autenticado)
+- `GET /new-student/:id` (`admin|user`)
+- `POST /new-student/` (`admin`)
+- `PUT /new-student/:id` (`admin`)
+- `DELETE /new-student/:id` (`admin`)
 
-Body create:
+Patrón aplicado:
+
+- Router -> Controller -> Service -> Model
+- DTO para create/update (`student.dto.js`)
+
+### 7) Orders (API + vista Handlebars)
+
+Incluye módulo con `Controller + Service + DAO + Model` y vista:
+
+- `GET /orders` -> vista HTML `Handlebars` con paginación y filtro por estado
+- `GET /api/orders` -> lista paginada JSON (`page`, `limit`, `status`)
+- `GET /api/orders/:id`
+- `GET /api/orders/:code`
+- `POST /api/orders/`
+- `PUT /api/orders/:id`
+- `DELETE /api/orders/:id`
+- `POST /api/orders/seed` -> inserta datos de ejemplo si la colección está vacía
+
+Características del módulo:
+
+- `OrderMongoDAO` con `listPaginated()`
+- cálculo automático de `total` en hooks de Mongoose (`pre("validate")` y `pre("findOneAndUpdate")`)
+- vista `orders/index.handlebars` con helpers (`formatMoney`, `formatDate`, `range`, `eq`)
+
+### 8) Advanced (`/advanced`)
+
+Demostración de router custom y composición:
+
+- `GET /advanced/students/:id` (preload por params + auth JWT cookie + roles)
+- `GET /advanced/students/:id/courses` (subrouter con `mergeParams`)
+- `GET /advanced/v1/ping`
+- `GET /advanced/boom` (lanza error async de prueba)
+
+### 9) API versionada (`/api/v1`)
+
+Subrouter que reexpone:
+
+- `/api/v1/` (home)
+- `/api/v1/student/*` (CRUD students clásico)
+- `/api/v1/api/auth/*` (auth avanzada anidada)
+
+### 10) Process (`/process`)
+
+- `GET /process` -> envs públicos (`NODE_ENV`, `PORT`, `MONGO_TARGET`)
+- `GET /process/info` -> info de proceso (pid, node, memoria, argv, uptime, etc.)
+
+## Modelos de datos
+
+### `Student`
+
+- `name: String`
+- `email: String` (único)
+- `age: Number`
+
+### `User`
+
+- `first_name: String`
+- `last_name: String`
+- `email: String` (único, trim, lowercase)
+- `password: String` (opcional para compatibilidad OAuth)
+- `age: Number`
+- `role: "user" | "seller" | "admin"` (default `user`)
+- `githubid: String`
+- timestamps
+
+### `Order`
+
+- `code: String` (único, indexado)
+- `buyerName: String`
+- `buyerEmail: String`
+- `items: Array<{ productId?, title, qty, unitPrice }>`
+- `total: Number` (calculado automáticamente)
+- `status: "pending" | "paid" | "delivered" | "cancelled"`
+- timestamps
+
+## Ejemplos rápidos
+
+### Crear estudiante (`/student`)
 
 ```json
 {
@@ -301,75 +366,97 @@ Body create:
 }
 ```
 
-### Rutas avanzadas (`/advanced`)
-
-- `GET /advanced/students/:id` -> requiere JWT cookie + roles `admin|user`, usa preload por params
-- `GET /advanced/v1/ping` -> `{ "ok": true, "version": "v1" }`
-- `GET /advanced/students/:id/courses` -> requiere JWT cookie
-- `GET /advanced/boom` -> lanza error controlado para demo
-
-### Subrouter API v1 (`/api/v1`)
-
-- `GET /api/v1/` -> home
-- `GET /api/v1/student` y CRUD completo igual que `/student`
-- `POST /api/v1/api/auth/*` y resto de auth avanzada anidada
-
-### Process/diagnostics (`/process`)
-
-- `GET /process` -> variables publicas (`NODE_ENV`, `PORT`, `MONGO_TARGET`)
-- `GET /process/info` -> info de proceso (pid, memory, argv, uptime, etc.)
-
-### Fallback
-
-- Cualquier ruta no definida responde `404` con:
+### Login JWT cookie (`/api/auth-jwt/login`)
 
 ```json
-{ "error": "Page not found.!" }
+{
+  "email": "johnny@example.com",
+  "password": "password123"
+}
 ```
 
-## Colecciones de Postman
+### Crear orden (`/api/orders/`)
 
-Ubicadas en:
+```json
+{
+  "code": "A-1003",
+  "buyerName": "Mario Gomez",
+  "buyerEmail": "mario@mail.com",
+  "items": [
+    { "title": "Teclado", "qty": 1, "unitPrice": 15000 },
+    { "title": "Mouse", "qty": 2, "unitPrice": 8000 }
+  ],
+  "status": "pending"
+}
+```
 
-- `src/postman/Auth.postman_collection.json`
-- `src/postman/Students.postman_collection.json`
+## Colecciones Postman
 
-Importalas en Postman y define variable `base_url` (ejemplo: `http://localhost:8000`).
+Ubicadas en `src/postman/`:
+
+- `Auth.postman_collection.json`
+- `Session Auth.postman_collection.json`
+- `JWT Auth.postman_collection.json`
+- `Students.postman_collection.json`
+- `Advanced.postman_collection.json`
+- `Process.postman_collection.json`
+
+Definir variable `base_url` (ej. `http://localhost:8000`).
+
+## Notas importantes (estado actual)
+
+### 1) Órdenes protegidas por rol requieren `req.user`
+
+En `order.router.js`, varias rutas usan `polices(...)`, pero el `requireJwtCookie` global está comentado.
+
+Esto implica:
+
+- `GET /api/orders` funciona (pública)
+- `POST /api/orders/seed` actualmente funciona (pública)
+- rutas con `polices(...)` pueden devolver `401` si no agregas antes `requireJwtCookie`
+
+Si quieres proteger todo el módulo de órdenes con JWT-cookie, descomenta:
+
+```js
+router.use(requireJwtCookie);
+```
+
+### 2) Conflicto potencial de rutas en órdenes
+
+Estas dos rutas tienen el mismo patrón de path:
+
+- `GET /api/orders/:id`
+- `GET /api/orders/:code`
+
+La primera puede capturar requests que conceptualmente querías resolver por código. Conviene diferenciar paths (por ejemplo `/api/orders/id/:id` y `/api/orders/code/:code`).
+
+### 3) GitHub OAuth
+
+Los endpoints existen, pero la strategy GitHub está comentada en `passport.config.js`. Si quieres usarla, debes habilitarla y completar `GITHUB_*`.
 
 ## Troubleshooting
 
-### Error de variables de entorno faltantes al arrancar
+### `EJSONPARSE` al correr `npm`
 
-Revisa `.env` y que existan:
+Revisa `package.json` por comas sobrantes (JSON no permite trailing commas).
+
+### `401 Not Authorized`
+
+- Falta sesión (`/auth`, `/api/auth`) o
+- Falta header Bearer (`/api/auth/jwt/me`) o
+- Falta cookie `access_token` (`/api/auth-jwt/*`, `/new-student/*`, rutas protegidas por `requireJwtCookie`)
+
+### `403 Forbbiden`
+
+Usuario autenticado pero sin rol requerido. El rol por defecto al registrarse es `user`.
+
+### Error de variables de entorno al iniciar
+
+Verifica:
 
 - `SECRET_SESSION`
 - `JWT_SECRET`
-- `MONGO_URL` o `MONGO_ATLAS_URL` segun `MONGO_TARGET`
-
-### Error de conexion MongoDB
-
-- Verifica que Mongo este levantado (si usas local)
-- Verifica usuario/password/cluster (si usas Atlas)
-- Confirma que `MONGO_TARGET` coincide con la URI cargada
-
-### 401 / 403 en rutas protegidas
-
-- 401: falta login/token/cookie
-- 403: usuario autenticado pero sin role requerido
-
-Importante: el rol por default del usuario registrado es `user`.  
-Para probar endpoints solo `admin` (por ejemplo `POST /new-student`), debes actualizar el campo `role` del usuario en MongoDB a `admin`.
-
-### OAuth GitHub no funciona
-
-En el estado actual, la strategy de GitHub en `src/config/auth/passport.config.js` esta comentada.  
-Si quieres usar `/api/auth/github`, debes habilitar esa strategy y completar variables `GITHUB_*`.
-
-## Scripts npm
-
-- `npm run dev`: arranque con nodemon
-- `npm start`: arranque normal
-- `npm test`: placeholder (no tests implementados)
+- `MONGO_URL` o `MONGO_ATLAS_URL` según `MONGO_TARGET`
 
 ## Licencia
 

@@ -13,6 +13,10 @@ import logger from './../middleware/logger.middleware.js';
 import { connectAuto } from './../config/db/connect.config.js';
 import { initPassport } from './../config/auth/passport.config.js';
 
+import { engine } from 'express-handlebars';
+import path from 'path';
+import { fileURLToPath  } from 'url';
+import { hbsHelpers } from './hbs.helper.js';
 
 const app = express();
 const PORT = environment.PORT;
@@ -21,6 +25,11 @@ const SECRET_SESSION = environment.SECRET_SESSION;
 app.use(express.json());
 app.use(logger);
 app.use(cookieParser(SECRET_SESSION))
+
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 
 export const startServer = async () => {
 
@@ -54,6 +63,16 @@ export const startServer = async () => {
     app.use(passport.initialize());
     app.use(passport.session());
 
+    
+    // Rutas de Handlebars
+    app.engine('handlebars', engine({
+        defaultLayout: 'main',
+        layoutDir: path.join(__dirname, '../views/layouts'),
+        helpers: hbsHelpers,
+    }))
+    app.set('view engine', 'handlebars');
+    app.set('views', path.join(__dirname, '../views'));
+    
     // Inicializar todos los enrutadores
     initRouters(app);
 

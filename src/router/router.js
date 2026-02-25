@@ -8,6 +8,7 @@ import apiV1Router from './routes/api.v1.router.js';
 import advancedRouter from './routes/advanced.router.js';
 import processRouter from './routes/process.router.js';
 import newStudentRouter from './routes/new.student.router.js';
+import orderRouter from './routes/order.router.js';
 
 
 
@@ -27,6 +28,9 @@ export function initRouters(app) {
 
     // Enrutador avanzado con Controlador
     app.use('/new-student', newStudentRouter);
+
+    // Enrutador de Ordenes
+    app.use('/', orderRouter);
 
     // Enrutador para manejar error 404.
     app.use((req, res) => {
