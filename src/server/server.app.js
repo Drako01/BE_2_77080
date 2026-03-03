@@ -76,6 +76,22 @@ export const startServer = async () => {
     // Inicializar todos los enrutadores
     initRouters(app);
 
+
+    // Manejo de señales y errores globales
+    process.on('unhandledRejection', (reason) => {
+        console.error('[process] Unhandled Rejection ', reason);
+    });
+
+    process.on('uncaughtException', (err) => {
+        console.error('[process] Uncaught Exception ', err);
+    });
+
+    process.on('SIGINT', () => {
+        console.log('\n[process] SIGINT recibido. Cerrando...');
+        process.exit(0);
+    });
+
+
     // Incializacion de el servidor (listen)
     app.listen(PORT, () => console.log(`Servidor escuchando en http://localhost:${PORT}`));
 }
