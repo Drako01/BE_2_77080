@@ -1,200 +1,146 @@
 # Backend 77080
 
-Backend API con `Express + MongoDB (Mongoose)` para prácticas de Backend, con varios enfoques de autenticación y una parte MVC con vistas `Handlebars` para órdenes.
+API backend en `Node.js + Express + MongoDB` con múltiples estrategias de autenticación, rutas versionadas, vistas con Handlebars y módulos de mensajería (Twilio) y mail (SMTP).
 
-## Qué incluye hoy
+## Estado actual de la app
 
-- CRUD de estudiantes (`/student`) sin auth (ruta clásica directa).
-- CRUD de estudiantes protegido (`/new-student`) con `Controller + Service + DTO`.
-- Auth por sesión tradicional (`/auth/*`).
-- Auth con `Passport Local + Session` (`/api/auth/*`).
-- Auth JWT Bearer (`/api/auth/jwt/*`).
-- Auth JWT en cookie HttpOnly con `passport-jwt` (`/api/auth-jwt/*`).
-- Módulo de órdenes con API REST + vista HTML (`/api/orders`, `/orders`).
-- Rutas avanzadas con `CustomRouter`, `group`, `param preload` y manejo async.
-- Diagnóstico de proceso (`/process`).
+Módulos activos hoy:
 
-## Stack y arquitectura
+- `home` (`GET /`)
+- `students` clásico (`/student`)
+- `students` por capas con JWT cookie (`/new-student`)
+- auth por sesión (`/auth/*`)
+- auth con Passport Local + Session + JWT Bearer (`/api/auth/*`)
+- auth JWT en cookie HttpOnly (`/api/auth-jwt/*`)
+- `orders` API + vista Handlebars (`/api/orders*`, `/orders`)
+- `messaging` con Twilio (`/api/messaging/*`)
+- `mailer` con Nodemailer + templates Handlebars (`/api/mail/*`)
+- `advanced` con `CustomRouter` (`/advanced/*`)
+- `process` para diagnóstico (`/process*`)
+- API versionada (`/api/v1/*`)
 
-### Stack
+## Stack técnico
 
-- Node.js + Express 5
-- MongoDB + Mongoose 9
-- `express-session` + `connect-mongo` (sesiones persistidas en Mongo)
-- `passport` (`local`, `jwt`, `github2`)
+- Node.js (ESM)
+- Express `5.2.1`
+- Mongoose `9.1.2`
+- `express-session` + `connect-mongo`
+- `passport` (`local`, `jwt-cookie`; `github` endpoint expuesto)
 - `jsonwebtoken`
 - `bcrypt`
 - `express-handlebars`
+- `twilio`
+- `nodemailer`
 
-### Arquitectura actual (conviven dos estilos)
+## Arquitectura
 
-1. Estilo clásico (directo)
-- `Router -> Model (Mongoose)`
-- Usado en rutas como `/student` y parte de auth.
+Conviven dos estilos:
 
-2. Estilo por capas (modular)
-- `Router -> Controller -> Service -> DAO -> Model`
-- Usado en `orders` y `new-student` (este último sin DAO, pero sí controller/service/DTO).
+- Estilo directo: `Router -> Model` (por ejemplo `/student`).
+- Estilo por capas: `Router -> Controller -> Service -> DAO -> Model` (por ejemplo `orders`).
+- Variante por capas sin DAO: `Router -> Controller -> Service -> Model + DTO` (`/new-student`).
 
-3. Infraestructura transversal
-- `middleware/logger` para trazas de inicio/fin por request.
-- `middleware/auth` para sesión, JWT Bearer y JWT-cookie.
-- `middleware/polices` para autorización por roles usando `req.user`.
-- `passport.config` para strategies `local` y `jwt-cookie`.
-- `server.app` para bootstrap (env, DB, session store, passport, handlebars, routers).
+```mermaid
+flowchart LR
+    C[Cliente/Postman] --> R[Router]
+    R --> M1[Middlewares auth/policies/logger]
+    M1 --> H{Tipo de modulo}
+    H -->|Directo| MOD[Model Mongoose]
+    H -->|Por capas| CTRL[Controller]
+    CTRL --> SVC[Service]
+    SVC --> DAO[DAO]
+    DAO --> MOD
+    MOD --> DB[(MongoDB)]
+    DB --> RES[JSON/HTML Response]
+```
 
-## Flujo (Mermaid)
+## Flujo JWT Cookie (actual)
 
-Nota: este flujo está implementado para rutas como `/api/auth-jwt/me` y `/new-student/*`.
-No aplica al módulo `orders` mientras `router.use(requireJwtCookie)` siga comentado en `src/router/routes/order.router.js`.
+```mermaid
+sequenceDiagram
+    participant U as Usuario
+    participant A as /api/auth-jwt/login
+    participant DB as MongoDB
+    participant P as Passport jwt-cookie
+    participant X as Ruta protegida
+
+    U->>A: POST email/password
+    A->>DB: Buscar user + bcrypt.compare
+    DB-->>A: OK
+    A-->>U: Set-Cookie access_token (HttpOnly)
+    U->>X: Request con cookie
+    X->>P: requireJwtCookie
+    P-->>X: req.user
+    X-->>U: 200/401/403
+```
+
+## Mapa de routers
 
 ```mermaid
 flowchart TD
-    A["Cliente o Postman"] --> B["POST /api/auth-jwt/login"]
-    B --> C["jwt.router.js"]
-    C --> D["User Model + bcrypt"]
-    D --> C
-    C --> E["Genera JWT"]
-    E --> F["Set-Cookie access_token (HttpOnly)"]
-    F --> G["Cliente guarda cookie"]
-
-    G --> H["Request a ruta protegida"]
-    H --> I["requireJwtCookie"]
-    I --> J["Passport JWT cookie strategy"]
-    J --> K["req.user"]
-    K --> L["Validacion de roles"]
-    L --> M["Controller o Handler"]
-    M --> N["Service o DAO"]
-    N --> O["Mongoose Model"]
-    O --> P["MongoDB"]
-    P --> A2["Response JSON o HTML"]
+    ROOT["app.use(...) en initRouters"] --> H["/ -> home.router"]
+    ROOT --> ST["/student -> student.router"]
+    ROOT --> AU["/auth -> user.router"]
+    ROOT --> PR["/auth/me -> profile.router"]
+    ROOT --> APIA["/api/auth -> auth.router"]
+    ROOT --> APIJ["/api/auth-jwt -> jwt.router"]
+    ROOT --> APIV1["/api/v1 -> api.v1.router"]
+    ROOT --> ADV["/advanced -> advanced.router"]
+    ROOT --> PROC["/process -> process.router"]
+    ROOT --> NST["/new-student -> new.student.router"]
+    ROOT --> ORD["/ -> order.router"]
+    ROOT --> MSG["/ -> messaging.router"]
+    ROOT --> MAIL["/ -> mailer.router"]
 ```
 
-Si no se visualiza el diagrama, tu visor Markdown probablemente no soporta Mermaid. En GitHub web suele verse correctamente.
-
-Flujo equivalente en texto:
-
-```text
-Cliente -> POST /api/auth-jwt/login
-       -> jwt.router -> User + bcrypt -> JWT
-       -> Set-Cookie(access_token)
-       -> Request a ruta protegida
-       -> requireJwtCookie (passport-jwt)
-       -> req.user
-       -> validación de roles
-       -> controller/handler -> service/dao -> model -> MongoDB
-       -> response
-```
-
-## Estructura actual del proyecto
-
-Arbol resumido (omitidos `node_modules` para legibilidad):
+## Estructura del proyecto
 
 ```text
 BE_2_77080/
 |-- app.js
 |-- package.json
-|-- package-lock.json
 |-- .env.example
 |-- README.md
 `-- src/
     |-- config/
-    |   |-- auth/
-    |   |   `-- passport.config.js
-    |   |-- db/
-    |   |   `-- connect.config.js
-    |   `-- env/
-    |       `-- env.config.js
+    |   |-- auth/passport.config.js
+    |   |-- db/connect.config.js
+    |   `-- env/env.config.js
     |-- controllers/
+    |   |-- student.controller.js
     |   |-- order.controller.js
-    |   `-- student.controller.js
+    |   |-- messaging.controller.js
+    |   `-- mailer.controller.js
     |-- dao/
     |   |-- base.dao.js
     |   `-- order.mongo.dao.js
     |-- middleware/
     |   |-- auth.middleware.js
-    |   |-- logger.middleware.js
-    |   `-- polices.middleware.js
+    |   |-- polices.middleware.js
+    |   `-- logger.middleware.js
     |-- models/
-    |   |-- order.model.js
     |   |-- student.model.js
     |   |-- user.model.js
-    |   `-- dto/
-    |       `-- student.dto.js
-    |-- postman/
-    |   |-- Advanced.postman_collection.json
-    |   |-- Auth.postman_collection.json
-    |   |-- JWT Auth.postman_collection.json
-    |   |-- Process.postman_collection.json
-    |   |-- Session Auth.postman_collection.json
-    |   `-- Students.postman_collection.json
+    |   |-- order.model.js
+    |   `-- dto/student.dto.js
     |-- router/
     |   |-- router.js
-    |   |-- custom/
-    |   |   `-- CustomRouter.js
-    |   `-- routes/
-    |       |-- advanced.router.js
-    |       |-- api.v1.router.js
-    |       |-- auth.router.js
-    |       |-- home.router.js
-    |       |-- jwt.router.js
-    |       |-- new.student.router.js
-    |       |-- order.router.js
-    |       |-- process.router.js
-    |       |-- profile.router.js
-    |       |-- student.router.js
-    |       `-- user.router.js
-    |-- server/
-    |   |-- hbs.helper.js
-    |   `-- server.app.js
+    |   |-- custom/CustomRouter.js
+    |   `-- routes/*.router.js
     |-- services/
+    |   |-- student.service.js
     |   |-- order.service.js
-    |   `-- student.service.js
-    `-- views/
-        |-- layouts/
-        |   `-- main.handlebars
-        `-- orders/
-            `-- index.handlebars
+    |   |-- messaging.service.js
+    |   `-- mailer.service.js
+    |-- server/
+    |   |-- server.app.js
+    |   `-- hbs.helper.js
+    |-- views/
+    |   |-- layouts/main.handlebars
+    |   |-- orders/index.handlebars
+    |   `-- emails/*.handlebars
+    `-- postman/*.postman_collection.json
 ```
-
-## Bootstrap y arranque
-
-`app.js` inicia `startServer()` y el bootstrap hace:
-
-1. Carga/valida variables de entorno (`validateEnv`).
-2. Conecta a Mongo (`LOCAL` o `ATLAS` según `MONGO_TARGET`).
-3. Configura `express-session` con `MongoStore`.
-4. Inicializa `passport` (`local`, `jwt-cookie`, serialize/deserialize).
-5. Configura `cookie-parser` + `express.json()`.
-6. Registra `logger` global.
-7. Configura motor `Handlebars`.
-8. Monta routers.
-9. Inicia `listen(PORT)`.
-
-## Variables de entorno
-
-Crear `.env` desde `.env.example`.
-
-PowerShell:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-Variables soportadas:
-
-| Variable | Requerida | Descripción |
-|---|---|---|
-| `NODE_ENV` | No | Entorno (`development`, `production`, etc.). |
-| `PORT` | No | Puerto del server. En código default `5000`; `.env.example` trae `8000`. |
-| `MONGO_TARGET` | No | `LOCAL` o `ATLAS`. |
-| `MONGO_URL` | Sí si `MONGO_TARGET=LOCAL` | URI Mongo local. |
-| `MONGO_ATLAS_URL` | Sí si `MONGO_TARGET=ATLAS` | URI Mongo Atlas. |
-| `SECRET_SESSION` | Sí | Secreto de sesión y firmado de cookies. |
-| `JWT_SECRET` | Sí | Secreto para firmar/verificar JWT. |
-| `GITHUB_CLIENT_ID` | Opcional | Solo si habilitas OAuth GitHub. |
-| `GITHUB_CLIENT_SECRET` | Opcional | Solo si habilitas OAuth GitHub. |
-| `GITHUB_CALLBACK_URL` | Opcional | Callback OAuth GitHub. |
 
 ## Instalación y ejecución
 
@@ -205,19 +151,50 @@ npm run dev
 
 Scripts:
 
-- `npm run dev`: inicia con `nodemon`
-- `npm start`: inicia con `node app.js`
-- `npm test`: placeholder
+- `npm run dev` -> nodemon
+- `npm start` -> node app.js
+- `npm test` -> placeholder
 
-## Funcionalidades por módulo
+## Variables de entorno
 
-### 1) Home
+Crear `.env` desde `.env.example`:
 
-- `GET /` devuelve mensaje simple de bienvenida JSON.
+```powershell
+Copy-Item .env.example .env
+```
 
-### 2) Students clásico (`/student`)
+Variables usadas por la app:
 
-CRUD directo contra `Student` (sin capa service/controller):
+| Variable | Requerida | Uso |
+|---|---|---|
+| `NODE_ENV` | No | Entorno de ejecución |
+| `PORT` | No | Puerto (`5000` por default en código) |
+| `MONGO_TARGET` | No | `LOCAL` o `ATLAS` |
+| `MONGO_URL` | Sí si `MONGO_TARGET=LOCAL` | Conexión Mongo local |
+| `MONGO_ATLAS_URL` | Sí si `MONGO_TARGET=ATLAS` | Conexión Mongo Atlas |
+| `SECRET_SESSION` | Sí | `express-session` + firmado de cookie |
+| `JWT_SECRET` | Sí | Firma/verificación JWT |
+| `GITHUB_CLIENT_ID` | Opcional | OAuth GitHub (si se habilita strategy) |
+| `GITHUB_CLIENT_SECRET` | Opcional | OAuth GitHub (si se habilita strategy) |
+| `GITHUB_CALLBACK_URL` | Opcional | Callback GitHub |
+| `TWILIO_ACCOUNT_SID` | Opcional | Cliente Twilio |
+| `TWILIO_AUTH_TOKEN` | Opcional | Cliente Twilio |
+| `TWILIO_FROM_SMS` | Opcional | Remitente SMS |
+| `TWILIO_FROM_WAPP` | Opcional | Remitente WhatsApp |
+| `SMTP_HOST` | Opcional | Host SMTP |
+| `SMTP_PORT` | Opcional | Puerto SMTP |
+| `SMTP_SECURE` | Opcional | `true/false` |
+| `SMTP_USER` | Opcional | Usuario SMTP |
+| `SMTP_PASS` | Opcional | Password SMTP |
+| `SMTP_FROM` | Opcional | From de emails |
+
+## Endpoints (métodos actuales)
+
+### Home
+
+- `GET /`
+
+### Students clásico (`/student`)
 
 - `GET /student`
 - `POST /student`
@@ -225,148 +202,116 @@ CRUD directo contra `Student` (sin capa service/controller):
 - `PUT /student/:id`
 - `DELETE /student/:id`
 
-Incluye:
-
-- validación de ObjectId en `:id`
-- control básico de duplicado por `email`
-
-### 3) Session auth básico (`/auth`)
-
-Rutas sobre `user.router.js` usando `req.session.user`:
+### Auth de sesión (`/auth`)
 
 - `POST /auth/register`
 - `POST /auth/login`
 - `POST /auth/logout`
-- `GET /auth` (lista usuarios, requiere sesión)
+- `GET /auth` (requiere sesión)
+- `GET /auth/me` (requiere sesión; viene de `profile.router`)
 
-Y perfil:
-
-- `GET /auth/me` (montado desde `profile.router.js`)
-
-### 4) Auth avanzada (`/api/auth`)
-
-Usa `Passport Local + Session`, más JWT Bearer en subrutas:
+### Auth Passport + Session + JWT Bearer (`/api/auth`)
 
 - `POST /api/auth/register`
-- `POST /api/auth/login` (passport local + `req.logIn`)
+- `POST /api/auth/login`
 - `POST /api/auth/logout`
 - `GET /api/auth/me`
-- `POST /api/auth/jwt/login` (retorna token en JSON)
-- `GET /api/auth/jwt/me` (requiere `Authorization: Bearer <token>`)
-
-También expone endpoints GitHub OAuth (strategy actualmente comentada en config):
-
 - `GET /api/auth/github`
 - `GET /api/auth/github/callback`
 - `GET /api/auth/github/fail`
+- `POST /api/auth/jwt/login`
+- `GET /api/auth/jwt/me` (Bearer token)
 
-### 5) JWT en cookie HttpOnly (`/api/auth-jwt`)
-
-Flujo moderno usando `passport-jwt` leyendo cookie `access_token`:
+### Auth JWT cookie (`/api/auth-jwt`)
 
 - `POST /api/auth-jwt/register`
-- `POST /api/auth-jwt/login` (setea cookie `access_token`)
-- `GET /api/auth-jwt/me` (requiere cookie + role `user|admin`)
-- `POST /api/auth-jwt/logout` (limpia cookie)
+- `POST /api/auth-jwt/login`
+- `GET /api/auth-jwt/me` (cookie `access_token`, roles `user|admin`)
+- `POST /api/auth-jwt/logout`
 
-### 6) Students con Controller/Service (`/new-student`)
+### Students por capas (`/new-student`)
 
-Protegido globalmente por `requireJwtCookie`:
-
-- `GET /new-student/` (autenticado)
+- `GET /new-student/`
 - `GET /new-student/:id` (`admin|user`)
 - `POST /new-student/` (`admin`)
 - `PUT /new-student/:id` (`admin`)
 - `DELETE /new-student/:id` (`admin`)
 
-Patrón aplicado:
+### Orders (`/orders` y `/api/orders`)
 
-- Router -> Controller -> Service -> Model
-- DTO para create/update (`student.dto.js`)
-
-### 7) Orders (API + vista Handlebars)
-
-Incluye módulo con `Controller + Service + DAO + Model` y vista:
-
-- `GET /orders` -> vista HTML `Handlebars` con paginación y filtro por estado
-- `GET /api/orders` -> lista paginada JSON (`page`, `limit`, `status`)
+- `GET /orders` (vista HTML Handlebars)
+- `GET /api/orders`
 - `GET /api/orders/:id`
 - `GET /api/orders/:code`
 - `POST /api/orders/`
 - `PUT /api/orders/:id`
 - `DELETE /api/orders/:id`
-- `POST /api/orders/seed` -> inserta datos de ejemplo si la colección está vacía
+- `POST /api/orders/seed`
 
-Características del módulo:
+### Messaging (Twilio)
 
-- `OrderMongoDAO` con `listPaginated()`
-- cálculo automático de `total` en hooks de Mongoose (`pre("validate")` y `pre("findOneAndUpdate")`)
-- vista `orders/index.handlebars` con helpers (`formatMoney`, `formatDate`, `range`, `eq`)
+- `POST /api/messaging/sms`
+- `POST /api/messaging/whatsapp`
 
-### 8) Advanced (`/advanced`)
+### Mailer (SMTP + templates)
 
-Demostración de router custom y composición:
+- `POST /api/mail/welcome`
+- `POST /api/mail/order-status`
 
-- `GET /advanced/students/:id` (preload por params + auth JWT cookie + roles)
-- `GET /advanced/students/:id/courses` (subrouter con `mergeParams`)
+### Advanced (`/advanced`)
+
+- `GET /advanced/students/:id`
+- `GET /advanced/students/:id/courses`
 - `GET /advanced/v1/ping`
-- `GET /advanced/boom` (lanza error async de prueba)
+- `GET /advanced/boom`
 
-### 9) API versionada (`/api/v1`)
+### Process (`/process`)
 
-Subrouter que reexpone:
+- `GET /process`
+- `GET /process/info`
 
-- `/api/v1/` (home)
-- `/api/v1/student/*` (CRUD students clásico)
-- `/api/v1/api/auth/*` (auth avanzada anidada)
+### API versionada (`/api/v1`)
 
-### 10) Process (`/process`)
+Subrouter que expone:
 
-- `GET /process` -> envs públicos (`NODE_ENV`, `PORT`, `MONGO_TARGET`)
-- `GET /process/info` -> info de proceso (pid, node, memoria, argv, uptime, etc.)
+- `GET /api/v1/`
+- `GET|POST|PUT|DELETE /api/v1/student...`
+- `POST|GET /api/v1/api/auth...`
 
-## Modelos de datos
+## Rutas de frontend (vistas)
 
-### `Student`
+Rutas navegables en navegador para ver UI de la app:
 
-- `name: String`
-- `email: String` (único)
-- `age: Number`
+- `GET /orders` -> renderiza `views/orders/index.handlebars` con layout `views/layouts/main.handlebars`.
 
-### `User`
+Query params soportados en la vista de órdenes:
 
-- `first_name: String`
-- `last_name: String`
-- `email: String` (único, trim, lowercase)
-- `password: String` (opcional para compatibilidad OAuth)
-- `age: Number`
-- `role: "user" | "seller" | "admin"` (default `user`)
-- `githubid: String`
-- timestamps
+- `page` (default `1`)
+- `limit` (default `10`)
+- `status` (`pending`, `paid`, `delivered`, `cancelled`)
 
-### `Order`
+Ejemplos:
 
-- `code: String` (único, indexado)
-- `buyerName: String`
-- `buyerEmail: String`
-- `items: Array<{ productId?, title, qty, unitPrice }>`
-- `total: Number` (calculado automáticamente)
-- `status: "pending" | "paid" | "delivered" | "cancelled"`
-- timestamps
+- `/orders`
+- `/orders?page=2&limit=5`
+- `/orders?status=paid`
 
-## Ejemplos rápidos
+Nota:
 
-### Crear estudiante (`/student`)
+- Actualmente no hay más rutas HTTP que rendericen HTML; el resto de endpoints responde JSON.
+
+## Ejemplos de payload
+
+Crear SMS:
 
 ```json
 {
-  "name": "Ana",
-  "email": "ana@mail.com",
-  "age": 21
+  "to": "+54911XXXXXXXX",
+  "body": "Hola, este es un mensaje de prueba"
 }
 ```
 
-### Login JWT cookie (`/api/auth-jwt/login`)
+Login JWT cookie:
 
 ```json
 {
@@ -375,7 +320,7 @@ Subrouter que reexpone:
 }
 ```
 
-### Crear orden (`/api/orders/`)
+Crear orden:
 
 ```json
 {
@@ -390,9 +335,15 @@ Subrouter que reexpone:
 }
 ```
 
-## Colecciones Postman
+## Notas de comportamiento actual
 
-Ubicadas en `src/postman/`:
+- En `order.router.js` las rutas con `polices(...)` requieren `req.user`, pero `router.use(requireJwtCookie)` está comentado; esto puede dar `401` en esas rutas.
+- Hay colisión potencial entre `GET /api/orders/:id` y `GET /api/orders/:code` porque comparten patrón.
+- En `passport.config.js` la strategy GitHub está comentada; los endpoints existen, pero requieren habilitar esa strategy para funcionar.
+
+## Postman
+
+Colecciones disponibles en `src/postman/`:
 
 - `Auth.postman_collection.json`
 - `Session Auth.postman_collection.json`
@@ -400,63 +351,6 @@ Ubicadas en `src/postman/`:
 - `Students.postman_collection.json`
 - `Advanced.postman_collection.json`
 - `Process.postman_collection.json`
-
-Definir variable `base_url` (ej. `http://localhost:8000`).
-
-## Notas importantes (estado actual)
-
-### 1) Órdenes protegidas por rol requieren `req.user`
-
-En `order.router.js`, varias rutas usan `polices(...)`, pero el `requireJwtCookie` global está comentado.
-
-Esto implica:
-
-- `GET /api/orders` funciona (pública)
-- `POST /api/orders/seed` actualmente funciona (pública)
-- rutas con `polices(...)` pueden devolver `401` si no agregas antes `requireJwtCookie`
-
-Si quieres proteger todo el módulo de órdenes con JWT-cookie, descomenta:
-
-```js
-router.use(requireJwtCookie);
-```
-
-### 2) Conflicto potencial de rutas en órdenes
-
-Estas dos rutas tienen el mismo patrón de path:
-
-- `GET /api/orders/:id`
-- `GET /api/orders/:code`
-
-La primera puede capturar requests que conceptualmente querías resolver por código. Conviene diferenciar paths (por ejemplo `/api/orders/id/:id` y `/api/orders/code/:code`).
-
-### 3) GitHub OAuth
-
-Los endpoints existen, pero la strategy GitHub está comentada en `passport.config.js`. Si quieres usarla, debes habilitarla y completar `GITHUB_*`.
-
-## Troubleshooting
-
-### `EJSONPARSE` al correr `npm`
-
-Revisa `package.json` por comas sobrantes (JSON no permite trailing commas).
-
-### `401 Not Authorized`
-
-- Falta sesión (`/auth`, `/api/auth`) o
-- Falta header Bearer (`/api/auth/jwt/me`) o
-- Falta cookie `access_token` (`/api/auth-jwt/*`, `/new-student/*`, rutas protegidas por `requireJwtCookie`)
-
-### `403 Forbbiden`
-
-Usuario autenticado pero sin rol requerido. El rol por defecto al registrarse es `user`.
-
-### Error de variables de entorno al iniciar
-
-Verifica:
-
-- `SECRET_SESSION`
-- `JWT_SECRET`
-- `MONGO_URL` o `MONGO_ATLAS_URL` según `MONGO_TARGET`
 
 ## Licencia
 

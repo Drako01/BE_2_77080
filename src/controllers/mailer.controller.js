@@ -16,7 +16,7 @@ class MailerController {
 
     async sendOrderTemplate(req, res) {
         try{
-            const { to, code, status } = rq.body;
+            const { to, code, status } = req.body;
             const r = await svc.send({
                 to,
                 subject: `Actualizacion de tu orden ${code}`,
